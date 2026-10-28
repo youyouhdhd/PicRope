@@ -37,12 +37,14 @@ namespace ScreenLine
         readonly CheckBox collect;
         readonly CheckBox collectText;
         readonly CheckBox autoHang;
+        readonly CheckBox watchFolder;
         internal readonly TrayPanel TrayMenu;
         internal AppearanceWindow Appearance { get; private set; }
         internal BasketWindow Basket { get; private set; }
         internal TextWindow TextWindow { get; private set; }
         internal CaptureWindow Capture { get; private set; }
         internal ShortcutWindow ShortcutSettings { get; private set; }
+        internal WatchFolderWindow WatchManager { get; private set; }
         readonly MenuItem captureMenu;
         internal readonly List<ImageEditorWindow> Editors = new List<ImageEditorWindow>();
         readonly AppUpdates updates = new AppUpdates();
@@ -88,10 +90,20 @@ namespace ScreenLine
             if (events.ShortcutAvailable) TrayMenu.Shortcut.Text = "Ctrl+Alt+T";
             else Notice("Ctrl+Alt+T 已被占用，可点击托盘图标打开。");
             TrayMenu.OnAction(TrayMenu.BasketButton, ShowBasket);
+            TrayMenu.OnAction(TrayMenu.ManageWatchButton, ShowWatchFolders);
             TrayMenu.OnAction(TrayMenu.TextButton, ShowTexts);
             autoHang = TrayMenu.AutoHang;
             TrayMenu.OnToggle(autoHang, Captures.AutoHang, delegate(bool value) { if (Captures.AutoHang != value) Captures.AutoHang = value; });
             Gallery.Changed += SyncAutoHang;
+            Gallery.Changed += SyncWatchFolders;
+            watchFolder = TrayMenu.WatchFolder;
+            TrayMenu.OnToggle(watchFolder, Captures.WatchFoldersEnabled, delegate(bool value)
+            {
+                if (Captures.WatchFoldersEnabled == value) return;
+                // 列表为空时不直接开启，先打开管理窗口引导添加目录，添加后自动开启。
+                if (value && Captures.WatchFolders.Count == 0) { SyncWatchFolders(); ShowWatchFolders(); return; }
+                if (value) EnableWatchFolders(); else DisableWatchFolders();
+            });
             collect = TrayMenu.Pictures;
             TrayMenu.OnToggle(collect, Captures.CollectClipboard, delegate(bool value) { Captures.CollectClipboard = value; Shelf.Update(); });
             collectText = TrayMenu.Text;
@@ -199,6 +211,7 @@ namespace ScreenLine
             try
             {
                 TrayMenu.Close(); if (Basket != null) Basket.Close(); if (TextWindow != null) TextWindow.Close();
+                if (WatchManager != null) WatchManager.Close();
                 if (Appearance != null) Appearance.Close(); if (ShortcutSettings != null) ShortcutSettings.Close();
                 Shelf.Reveal(false, false, 0); await Task.Delay(260);
                 if (disposed) return;
@@ -262,6 +275,43 @@ namespace ScreenLine
         }
 
         void SyncAutoHang() { autoHang.IsChecked = Captures.AutoHang; }
+
+        void EnableWatchFolders()
+        {
+            try { Captures.EnableWatchFolders(); }
+            catch (Exception error)
+            {
+                Gallery.Store.Log(error);
+                Notice("监控设置保存失败，请重试。");
+            }
+            SyncWatchFolders();
+        }
+
+        void DisableWatchFolders()
+        {
+            try { Captures.DisableWatchFolders(); }
+            catch (Exception error)
+            {
+                Gallery.Store.Log(error);
+                Notice("监控设置保存失败，请重试。");
+            }
+            SyncWatchFolders();
+        }
+
+        void SyncWatchFolders()
+        {
+            watchFolder.IsChecked = Captures.WatchFoldersEnabled;
+            TrayMenu.WatchStatus.Text = WatchFolderRules.Summarize(Captures.WatchFolders);
+        }
+
+        internal void ShowWatchFolders()
+        {
+            if (WatchManager != null) { WatchManager.Activate(); return; }
+            WatchManager = new WatchFolderWindow(Captures, Gallery);
+            WatchManager.Owner = Shelf;
+            WatchManager.Closed += delegate { WatchManager = null; };
+            WatchManager.Show();
+        }
 
         void SyncScreens()
         {
@@ -432,6 +482,7 @@ namespace ScreenLine
                         Gallery.Remove(item);
                         break;
                     case ShotAction.Trash:
+                        // 收集文件夹（Inbox）内的图片删除源文件；监控文件夹等其他位置的图片只移除记录、保留原文件。
                         if (FileRules.IsInside(item.Path, Gallery.Store.Inbox))
                         {
                             FileSystem.DeleteFile(item.Path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
@@ -455,10 +506,12 @@ namespace ScreenLine
             if (Basket != null) Basket.Close();
             if (TextWindow != null) TextWindow.Close();
             if (Appearance != null) Appearance.Close();
+            if (WatchManager != null) WatchManager.Close();
             if (notice != null) notice.Close();
             foreach (var editor in Editors.ToArray()) editor.CloseWithoutPrompt();
             TrayMenu.Close();
             Gallery.Changed -= SyncAutoHang;
+            Gallery.Changed -= SyncWatchFolders;
             Texts.Changed -= Shelf.UpdateTexts;
             Captures.Dispose();
             events.Dispose();
