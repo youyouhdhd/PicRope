@@ -277,6 +277,19 @@ namespace ScreenLine.Tests
                 var restored = new StateStore(gallery.Store.Root);
                 Check(restored.State.Images.Count == 0 && restored.State.Collection.Count == 0 && File.Exists(file));
             });
+            Run("监控目录已有文件遍历包含深层子目录，仅顶层模式不含子目录", delegate
+            {
+                string treeRoot = Path.Combine(root, "遍历根");
+                Directory.CreateDirectory(Path.Combine(treeRoot, "子目录"));
+                Directory.CreateDirectory(Path.Combine(treeRoot, "子目录", "孙目录"));
+                File.WriteAllText(Path.Combine(treeRoot, "顶层.png"), "x");
+                File.WriteAllText(Path.Combine(treeRoot, "子目录", "中层.png"), "x");
+                File.WriteAllText(Path.Combine(treeRoot, "子目录", "孙目录", "深层.png"), "x");
+                var deep = WatchFolderRules.EnumerateFiles(treeRoot, true).OrderBy(path => path).ToList();
+                Check(deep.Count == 3 && deep.Contains(Path.Combine(treeRoot, "子目录", "孙目录", "深层.png")));
+                var top = WatchFolderRules.EnumerateFiles(treeRoot, false).ToList();
+                Check(top.Count == 1 && top[0] == Path.Combine(treeRoot, "顶层.png"));
+            });
             Run("设置与中文路径可持久化并原子替换", delegate
             {
                 string profile = Path.Combine(root, "state-profile");

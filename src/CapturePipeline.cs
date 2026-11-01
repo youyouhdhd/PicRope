@@ -255,8 +255,12 @@ namespace ScreenLine
 
         void MarkSeen(string folder, bool includeChildren)
         {
-            foreach (string path in Directory.EnumerateFiles(folder, "*", includeChildren ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly))
-                seen.Add(path);
+            // 大目录或访问异常目录的遍历放到后台线程，结果回到界面线程登记，避免阻塞响应。
+            System.Threading.Tasks.Task.Run(delegate
+            {
+                var marked = new List<string>(WatchFolderRules.EnumerateFiles(folder, includeChildren));
+                dispatcher.BeginInvoke(new Action(delegate { if (!disposed) foreach (string path in marked) seen.Add(path); }));
+            });
         }
 
         FileSystemWatcher CreateWatcher(string target, bool includeChildren)

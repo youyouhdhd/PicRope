@@ -246,6 +246,30 @@ namespace ScreenLine
             return false;
         }
 
+        // 逐层入栈遍历，单个子目录无法访问时跳过而不是中断整次遍历。
+        public static IEnumerable<string> EnumerateFiles(string folder, bool allDirectories)
+        {
+            var pending = new Stack<string>();
+            pending.Push(folder);
+            while (pending.Count > 0)
+            {
+                string current = pending.Pop();
+                string[] files = null;
+                try { files = Directory.GetFiles(current); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+                if (files != null)
+                    foreach (string file in files) yield return file;
+                if (!allDirectories) yield break;
+                string[] children = null;
+                try { children = Directory.GetDirectories(current); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+                if (children != null)
+                    foreach (string child in children) pending.Push(child);
+            }
+        }
+
         public static string Compact(string path, int budget)
         {
             return Fit(Normalize(path), budget);
