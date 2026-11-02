@@ -200,6 +200,7 @@ namespace ScreenLine.Tests
                 File.WriteAllText(Path.Combine(store.Root, "state.json"), "{\"Images\":[\"旧截图.png\"]}");
                 Check(new StateStore(store.Root).State.AutoHang);
             });
+
             Run("监控文件夹列表可保存并在重启后恢复，旧版配置默认关闭", delegate
             {
                 string profile = Path.Combine(root, "watch-folder-profile");
@@ -289,6 +290,18 @@ namespace ScreenLine.Tests
                 Check(deep.Count == 3 && deep.Contains(Path.Combine(treeRoot, "子目录", "孙目录", "深层.png")));
                 var top = WatchFolderRules.EnumerateFiles(treeRoot, false).ToList();
                 Check(top.Count == 1 && top[0] == Path.Combine(treeRoot, "顶层.png"));
+            });
+            Run("顶部悬停展开默认开启，关闭和重新开启后可恢复", delegate
+            {
+                var store = new StateStore(Path.Combine(root, "top-hover-profile"));
+                Check(store.State.RevealOnTopHover);
+                store.State.RevealOnTopHover = false; store.Save();
+                Check(!new StateStore(store.Root).State.RevealOnTopHover);
+                store.State.RevealOnTopHover = true; store.Save();
+                Check(new StateStore(store.Root).State.RevealOnTopHover);
+                File.WriteAllText(Path.Combine(store.Root, "state.json"), "{\"Images\":[\"旧截图.png\"],\"HoverPreview\":false}");
+                var legacy = new StateStore(store.Root);
+                Check(legacy.State.RevealOnTopHover && !legacy.State.HoverPreview && legacy.State.Images.Single() == "旧截图.png");
             });
             Run("设置与中文路径可持久化并原子替换", delegate
             {
