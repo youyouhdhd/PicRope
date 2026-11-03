@@ -7,18 +7,21 @@
 <p align="center">Windows 截图暂存与桌面贴图工具</p>
 
 <p align="center">
-  <a href="https://github.com/Renly1994/PicRope/releases/latest"><img src="https://img.shields.io/github/v/release/Renly1994/PicRope?style=flat-square&amp;label=release&amp;color=2563eb" alt="最新版本"></a>
+  <a href="https://github.com/youyouhdhd/PicRope/releases/latest"><img src="https://img.shields.io/github/v/release/youyouhdhd/PicRope?style=flat-square&amp;label=release&amp;color=2563eb" alt="最新版本"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078d4?style=flat-square" alt="Windows 10 和 11">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-475569?style=flat-square" alt="MIT 许可"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Renly1994/PicRope/releases/latest"><strong>下载 Windows 版</strong></a>
+  <a href="https://github.com/youyouhdhd/PicRope/releases/latest"><strong>下载 Windows 版</strong></a>
   · <a href="#功能">功能</a>
   · <a href="#开始使用">开始使用</a>
+  · <a href="#关于本-fork">关于本 Fork</a>
   · <a href="#常见问题">常见问题</a>
-  · <a href="https://github.com/Renly1994/PicRope/issues">反馈</a>
+  · <a href="https://github.com/youyouhdhd/PicRope/issues">反馈</a>
 </p>
+
+> **关于本仓库**：这是 [Renly1994/PicRope](https://github.com/Renly1994/PicRope) 的独立演进版（fork），在上游基础上新增**多目录文件夹监控**等功能，并随上游持续同步。本仓库自带独立的版本线与应用内更新，详见[关于本 Fork](#关于本-fork)。
 
 ![图绳界面拼图：屏幕上沿的截图绳、文字信封、图片篮子与桌面贴图，图片内容为示例](docs/assets/overview-windows.png)
 
@@ -38,7 +41,7 @@ PicRope 将截图暂存在屏幕上沿，单击复制、拖拽取用，也可以
 
 ## 开始使用
 
-1. 从 [Releases 下载最新版](https://github.com/Renly1994/PicRope/releases/latest)，完整解压后运行 `Install.cmd`。
+1. 从 [Releases 下载最新版](https://github.com/youyouhdhd/PicRope/releases/latest)，完整解压后运行 `Install.cmd`。
 2. 启动图绳，用 `Win+PrtScn` 截图。保存到 Windows 截图文件夹的新图片会自动挂上。
 3. 将鼠标移到屏幕上沿展开绳子，单击图片复制，或拖拽到需要的应用。
 
@@ -168,6 +171,27 @@ PicRope 将截图暂存在屏幕上沿，单击复制、拖拽取用，也可以
 可从 Windows「已安装的应用」中卸载，卸载会清理图绳收集的副本、设置和缓存。
 
 </details>
+
+## 关于本 Fork
+
+本仓库是 [Renly1994/PicRope](https://github.com/Renly1994/PicRope)（图绳）的公开 fork。上游希望保持轻量，[多目录文件夹监控的合入请求](https://github.com/Renly1994/PicRope/pull/9)被友善保留作参考；该功能在本仓库独立维护，供需要更多收集能力的用户取用。
+
+### 与上游的区别
+
+| 能力 | 上游 1.2.2 | 本 Fork 2.x |
+| --- | --- | --- |
+| 多目录文件夹监控 | — | ✅ 同时监控多个指定文件夹 |
+| 子文件夹监控 | — | ✅ 按目录勾选，覆盖全部子目录，新建子目录自动纳入 |
+| 监控管理窗口 | — | ✅ 目录增删、子文件夹范围、总开关，托盘一键直达 |
+| 挂载性能 | — | 已有文件在后台线程标记、逐层遍历，大目录不阻塞界面 |
+| 删除语义 | 收集副本进回收站，外部图片保留原文件 | 完全一致（监控文件夹自然继承「保留原文件」） |
+| 其余功能（区域截图、篮子、信封、贴图、更新等） | — | 完全一致，随上游同步 |
+
+### 版本与更新
+
+- 本仓库使用独立的 **2.x** 版本线（2.0.0 基于上游 1.2.2），避免与上游版本混淆。
+- **应用内更新检查本仓库的 Releases**，不会提示安装上游版本（避免覆盖本 Fork 功能）。
+- 上游发布新版本后会定期合并同步，并在本仓库发布对应的 2.x 新版。
 
 ## 开发
 
