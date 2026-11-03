@@ -24,6 +24,8 @@ namespace ScreenLine
         // 独立演进版：应用内更新检查本 Fork 的 Releases；上游合并进本仓库后随版本一并发布。
         public const string Repository = "https://github.com/youyouhdhd/PicRope";
         public const string Endpoint = "https://api.github.com/repos/youyouhdhd/PicRope/releases/latest";
+        // 版本采用「所基于的上游版本 + w 序号」，如 1.2.2w1；无后缀的为上游原版。
+        static readonly Regex VersionPattern = new Regex(@"^(\d+)\.(\d+)\.(\d+)(?:w(\d+))?$", RegexOptions.Compiled);
         public static readonly string CurrentVersion = Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)
             .Cast<AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
         internal static readonly string Cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PicRope", "Updates");
@@ -58,8 +60,8 @@ namespace ScreenLine
             if (release == null) throw new InvalidDataException("更新信息不完整。");
             if (release.draft || release.prerelease) return null;
             string version = (release.tag_name ?? "").TrimStart('v', 'V');
-            if (!Regex.IsMatch(version, @"^\d+\.\d+\.\d+$")) throw new InvalidDataException("更新版本号无效。");
-            if (new Version(version) <= new Version(current)) return null;
+            if (!VersionPattern.IsMatch(version)) throw new InvalidDataException("更新版本号无效。");
+            if (CompareVersions(version, current) <= 0) return null;
             string file = "PicRope-" + version + "-windows-x64.zip";
             var asset = (release.assets ?? new AssetData[0]).SingleOrDefault(item => item.name == file);
             if (asset == null) throw new InvalidDataException("新版本暂未提供 Windows 安装包，请稍后重试。");
@@ -68,6 +70,20 @@ namespace ScreenLine
                 throw new InvalidDataException("更新包地址或校验信息无效，请稍后重试。");
             return new UpdateRelease { Version = version, Notes = release.body ?? "", Url = Repository + "/releases/tag/" + release.tag_name,
                 DownloadUrl = expected, Size = asset.size, Sha256 = asset.digest.Substring(7) };
+        }
+
+        // 先比 X.Y.Z 主版本；主版本相同时，带 w 后缀的更新，w 序号大者更新。兼容无后缀的上游格式。
+        internal static int CompareVersions(string left, string right)
+        {
+            var one = VersionPattern.Match(left);
+            var other = VersionPattern.Match(right);
+            if (!one.Success || !other.Success) throw new InvalidDataException("更新版本号无效。");
+            int order = new Version(one.Groups[1].Value + "." + one.Groups[2].Value + "." + one.Groups[3].Value)
+                .CompareTo(new Version(other.Groups[1].Value + "." + other.Groups[2].Value + "." + other.Groups[3].Value));
+            if (order != 0) return order;
+            int watchOne = one.Groups[4].Success ? int.Parse(one.Groups[4].Value) : 0;
+            int watchOther = other.Groups[4].Success ? int.Parse(other.Groups[4].Value) : 0;
+            return watchOne.CompareTo(watchOther);
         }
 
         public async Task<string> DownloadAsync(UpdateRelease release, IProgress<int> progress, CancellationToken cancellation)

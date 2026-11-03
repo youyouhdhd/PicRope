@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -48,7 +49,9 @@ namespace ScreenLine.Tests
         {
             root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test-data", "updates-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root);
             // 伪造的新版本号始终高于当前程序版本，避免随版本升级频繁修改用例。
-            string newer = new Version(AppUpdates.CurrentVersion).Major + 1 + ".3.0";
+            int major = int.Parse(Regex.Match(AppUpdates.CurrentVersion, @"^(\d+)\.").Groups[1].Value);
+            string newer = major + 1 + ".3.0w9";
+            string ahead = major + 2 + ".0.0w1";
             string fixture = Path.Combine(root, "fixture.exe");
             using (var compiler = CodeDomProvider.CreateProvider("CSharp"))
             {
@@ -64,7 +67,10 @@ namespace ScreenLine.Tests
                     browser_download_url = AppUpdates.Repository + "/releases/download/v" + newer + "/PicRope-" + newer + "-windows-x64.zip", digest = Digest(package) }
             } };
             Check(Parse().Version == newer && Parse().DownloadUrl.EndsWith("windows-x64.zip"), "只选择较新的 Windows x64 安装包，不误取源码包");
-            Check(AppUpdates.Parse(json.Serialize(data), newer) == null && AppUpdates.Parse(json.Serialize(data), new Version(newer).Major + 1 + ".0.0") == null, "同版与旧版不会提示升级或降级");
+            Check(AppUpdates.Parse(json.Serialize(data), newer) == null && AppUpdates.Parse(json.Serialize(data), ahead) == null, "同版与旧版不会提示升级或降级");
+            Check(AppUpdates.CompareVersions("1.2.2w2", "1.2.2w1") > 0 && AppUpdates.CompareVersions("1.2.2w1", "1.2.2") > 0
+                && AppUpdates.CompareVersions("1.2.2", "1.2.2w1") < 0 && AppUpdates.CompareVersions("1.3.0", "1.2.2w9") > 0
+                && AppUpdates.CompareVersions("1.2.2w1", "1.2.2w1") == 0 && AppUpdates.CompareVersions("1.3.0w1", "1.2.2") > 0, "w 后缀按序号比较，主版本优先，兼容上游无后缀格式");
             data.prerelease = true; Check(Parse() == null, "预发布版本不参与自动更新"); data.prerelease = false;
             data.draft = true; Check(Parse() == null, "草稿版本不参与更新"); data.draft = false;
             var asset = data.assets[1]; string original = asset.digest; asset.digest = null;
